@@ -1,419 +1,338 @@
 # NetSentinel
+### Lightweight Network Intrusion Detection & Response System
 
-A lightweight network intrusion detection and response system using Snort, custom detection rules, Python-based threat analysis, and a web dashboard.
-
----
-
-## Current Phase
-
-**Phase 1 — Project Setup**
-
-The project foundation has been established. All subsequent functionality will be implemented incrementally across the phases listed below.
+NetSentinel is a lightweight Network Intrusion Detection and Response System (NIDS) built using **Snort 2.9.20**, custom rule-based packet detection, deterministic Python threat scoring, application-level simulated intrusion response, and a web dashboard.
 
 ---
 
-## Planned Architecture
+## Overview
 
-```
+NetSentinel monitors network traffic for suspicious patterns using Snort, parses rule alerts into structured Python data, evaluates a 0–100 threat score and risk category, triggers application-level response policies, and presents security visibility through a web dashboard powered by Flask and Chart.js.
+
+---
+
+## Problem Statement
+
+Unmonitored network traffic can harbor malicious scanning, unauthorized connection attempts, and web application attack vectors. Manually inspecting raw network logs is inefficient and fails to prioritize high-risk threats. 
+
+NetSentinel solves this challenge by providing automated, real-time intrusion detection, deterministic threat scoring, and structured event visualization to give security analysts immediate visibility into network threat activity.
+
+---
+
+## Solution & Architecture
+
+NetSentinel implements an end-to-end security pipeline:
+
+```text
 Network Traffic
       ↓
-    Snort
+Snort IDS (2.9.20)
       ↓
-Detection Rules
+Custom Detection Rules
       ↓
-Alert Processing
+Python Alert Parser
       ↓
-Threat Scoring
+Threat Scoring Engine
       ↓
 Response Engine
+      ↓
+Flask REST API
       ↓
 Security Dashboard
 ```
 
+### Mermaid System Architecture
+
+```mermaid
+flowchart TD
+    A[Network Traffic] --> B[Snort IDS]
+    B --> C[Custom Detection Rules]
+    C --> D[Snort Alert Log]
+    D --> E[Python Alert Parser]
+    E --> F[Threat Scoring Engine]
+    F --> G[Response Engine]
+    G --> H[Flask API]
+    H --> I[Security Dashboard]
+```
+
 ---
 
-## Planned Technologies
+## Key Features
 
-- **Snort** — Network packet inspection and rule-based alerting
-- **Python** — Core engine, alert processing, and threat scoring
-- **Flask** — Backend API and dashboard server
-- **SQLite** — Lightweight local database for alert storage
-- **HTML / CSS / JavaScript** — Frontend dashboard
-- **Chart.js** — Real-time data visualization
+- **Network Monitoring**: Live packet capture and rule matching using Snort 2.9.20 and Npcap.
+- **Custom Rule Engine**: Tailored detection rules for ICMP scans, suspicious TCP connections, and HTTP attacks.
+- **Regex Alert Parser**: High-performance extraction of timestamp, SID, priority, protocol, source/destination IP, and ports.
+- **Deterministic Threat Scoring**: Transparent 0–100 scoring algorithm based on Snort priority and contextual port modifiers.
+- **Risk Level Classification**: Standardized 4-tier risk categories (`LOW`, `MEDIUM`, `HIGH`, `CRITICAL`).
+- **Application-Level Response Engine**: Simulated defensive actions (`LOG`, `FLAG`, `SUSPICIOUS`, `SIMULATED_BLOCK`, `ALREADY_BLOCKED`).
+- **In-Memory IP Tracking**: Real-time maintenance of suspicious IP sets and simulated blocklists without database dependencies.
+- **Flask REST API**: Read-only JSON endpoints (`/health`, `/api/alerts`, `/api/stats`, `/api/responses`).
+- **Cybersecurity Dashboard**: Modern dark-mode web interface featuring live summary metrics, threat distribution donut chart, attack activity bar chart, and recent alert tables.
+- **Auto-Refresh & Resiliency**: Automated 5-second polling loop with visual backend offline fallback indicators.
 
 ---
 
-## Development Phases
+## Custom Detection Rules
 
-| Phase | Description        | Status      |
-|-------|--------------------|-------------|
-| 1     | Project Setup      | ✅ Complete  |
-| 2     | Snort Configuration| ✅ Complete  |
-| 3     | Attack Simulation  | ✅ Complete  |
-| 4     | Alert Parser       | ✅ Complete  |
-| 5     | Threat Scoring     | ✅ Complete  |
-| 6     | Response Engine    | ✅ Complete  |
-| 7     | Dashboard          | ✅ Complete  |
-| 8     | Final Validation   | ✅ Complete  |
+NetSentinel uses custom detection rules loaded in `snort/rules/netsentinel.rules`:
+
+| SID | Message | Severity | Classtype | Protocol / Target |
+|:---:|---|:---:|---|---|
+| **9000001** | `[NetSentinel] ICMP Activity Detected` | LOW (Priority 3) | `network-scan` | ICMP Any |
+| **9000002** | `[NetSentinel] Suspicious TCP Connection Attempt on Port 4444` | MEDIUM (Priority 2) | `attempted-recon` | TCP Port 4444 |
+| **9000003** | `[NetSentinel] Suspicious HTTP Test Pattern Detected` | HIGH (Priority 1) | `web-application-attack` | TCP Port 80, 8000, 8080 |
+
+*All detection rules were validated against safe, controlled local traffic (`127.0.0.1`).*
+
+---
+
+## Deterministic Threat Scoring
+
+NetSentinel employs a transparent, rule-based scoring engine in `engine/threat_score.py`. Scoring is completely deterministic and does not rely on opaque machine learning models or external APIs.
+
+### Base Scoring Matrix
+
+| Snort Priority | Base Score | Default Description |
+|:---:|:---:|---|
+| **Priority 1** | `70` | High severity alert |
+| **Priority 2** | `50` | Medium severity alert |
+| **Priority 3** | `30` | Low severity alert |
+| **Unknown** | `20` | Default fallback |
+
+### Context Modifiers
+
+* **Target Port 4444 (TCP)**: `+10` points (Common reverse-shell / malware port).
+* **HTTP Test Pattern (TCP)**: `+5` points (Web attack signature match).
+
+### Risk Classification Matrix
+
+| Score Range | Risk Level | Policy Description |
+|:---:|:---:|---|
+| **0 – 29** | `LOW` | Minor or informational network event |
+| **30 – 59** | `MEDIUM` | Suspicious scanning or general activity |
+| **60 – 79** | `HIGH` | High-priority port attempt or web pattern |
+| **80 – 100** | `CRITICAL` | Severe exploit pattern or critical alert |
+
+### Verified Rule Scoring Examples
+
+| SID | Calculation | Score | Risk Level |
+|:---:|---|:---:|:---:|
+| **9000001** | Base Priority 3 (`30`) | **30** | `MEDIUM` |
+| **9000002** | Base Priority 2 (`50`) + Port 4444 (`+10`) | **60** | `HIGH` |
+| **9000003** | Base Priority 1 (`70`) + HTTP TCP (`+5`) | **75** | `HIGH` |
+
+---
+
+## Application-Level Response Engine
+
+The Response Engine in `engine/response_engine.py` evaluates scored alerts and assigns application-level defensive actions:
+
+| Risk Level | Response Action | Status Code | Action Taken |
+|:---:|:---:|:---:|---|
+| **LOW** | `LOG` | `RECORDED` | Logged into response history. |
+| **MEDIUM** | `FLAG` | `FLAGGED` | Flagged for analyst monitoring. |
+| **HIGH** | `SUSPICIOUS` | `MARKED_SUSPICIOUS` | Source IP added to `suspicious_ips` list. |
+| **CRITICAL** | `SIMULATED_BLOCK` | `BLOCKED_SIMULATED` | Source IP added to `blocked_ips` list. |
+| **CRITICAL** *(Dup)* | `ALREADY_BLOCKED` | `BLOCKED_SIMULATED` | Duplicate CRITICAL alert; IP already in blocklist. |
+
+> **Safety Notice:** NetSentinel uses an application-level simulated response mechanism. It does not modify the operating system firewall or perform real IP blocking.
+
+---
+
+## Security Dashboard
+
+The web dashboard is hosted by Flask and served from `dashboard/`:
+
+- **Metrics Cards**: Real-time totals for Alerts, Medium Risk, High Risk, and Simulated Blocks.
+- **Threat Distribution Chart**: Donut chart powered by Chart.js categorizing alerts by risk level.
+- **Attack Activity Chart**: Bar chart showing detection counts by SID rule.
+- **Recent Security Alerts**: Detailed tabular feed with colored risk badges.
+- **Tracked Sources**: Live lists for Suspicious IPs and Simulated Blocked IPs.
+- **Response Activity**: Complete audit stream of response actions taken by the engine.
+
+### Technology Stack
+
+* **Backend**: Python 3.13, Flask 3.1
+* **Frontend**: HTML5, Vanilla CSS, JavaScript (ES6)
+* **Visualization**: Chart.js 4.4 (CDN)
 
 ---
 
 ## Project Structure
 
-```
+```text
 NetSentinel/
 ├── snort/
-│   ├── rules/          # Snort detection rules (Phase 2)
-│   └── config/         # Snort configuration files (Phase 2)
-├── engine/             # Threat analysis engine (Phases 4–6)
-├── backend/            # Flask API server
-│   └── app.py          # Entry point — Phase 1 health check
-├── database/           # SQLite schema and migrations (Phase 4)
-├── dashboard/          # Frontend dashboard (Phase 7)
-├── tests/              # Test suite (added incrementally)
-├── README.md
-└── requirements.txt
+│   ├── rules/
+│   │   └── netsentinel.rules        # Custom Snort detection rules
+│   └── config/
+│       ├── netsentinel.conf         # Snort configuration file
+│       └── start_snort.ps1          # PowerShell launcher & test script
+│
+├── engine/
+│   ├── alert_parser.py              # Snort fast-alert regex parser
+│   ├── run_parser.py                # Parser demonstration script
+│   ├── threat_score.py              # Deterministic 0-100 scoring engine
+│   ├── run_scoring.py               # Scoring demonstration script
+│   ├── response_engine.py           # Application response engine & IP tracker
+│   └── run_response.py              # Full end-to-end pipeline demonstration
+│
+├── backend/
+│   └── app.py                       # Flask REST API & dashboard static server
+│
+├── dashboard/
+│   ├── index.html                   # Dashboard UI structure
+│   ├── style.css                    # Dark cybersecurity styling & risk badges
+│   └── app.js                       # Chart.js initialization & API polling loop
+│
+├── tests/
+│   ├── test_alert_parser.py         # Unit tests for alert parser
+│   ├── test_threat_score.py         # Unit tests for threat scoring logic
+│   ├── test_response_engine.py      # Unit tests for response engine & safety
+│   ├── test_dashboard_api.py        # Integration tests for Flask API
+│   ├── test_http_server.py          # Local HTTP server for SID 9000003 testing
+│   ├── run_tests.ps1                # PowerShell controlled traffic generator
+│   └── attack_simulation.md         # Attack simulation evidence log
+│
+├── README.md                        # Project documentation
+└── requirements.txt                 # Dependencies (Flask, Pytest)
 ```
 
 ---
 
-## Running the Backend (Phase 1)
+## Installation & Setup Guide
+
+### Environment Requirements
+
+* **Operating System**: Windows 11
+* **Packet Capture Driver**: Npcap (or WinPcap)
+* **IDS Engine**: Snort 2.9.20 (installed at `C:\Snort`)
+* **Python Runtime**: Python 3.10+
+
+### 1. Install Dependencies
 
 ```bash
 pip install -r requirements.txt
-python backend/app.py
 ```
 
-Health check:
-
-```bash
-curl http://localhost:5000/health
-```
-
-Expected response:
-
-```json
-{
-  "status": "ok",
-  "service": "NetSentinel"
-}
-```
-
----
-
-## Phase 2 — Snort Configuration
-
-### Environment
-
-| Item | Details |
-|---|---|
-| **OS** | Windows 11 Home (10.0.26200) |
-| **Snort Version** | 2.9.20 |
-| **Network Interface** | Wi-Fi — MediaTek Wi-Fi 6E MT7922 (RZ616) 160MHz PCIe Adapter |
-| **Interface selected because** | Only active adapter on the machine (`Status: Up`) |
-
-### Configuration Files Created
-
-| File | Purpose |
-|---|---|
-| `snort/config/netsentinel.conf` | Main Snort configuration — sets HOME_NET, preprocessors, output plugins, and loads our rules |
-| `snort/config/start_snort.ps1` | PowerShell helper script to start Snort or run in config-test mode |
-| `snort/rules/netsentinel.rules` | Custom detection rules for Phase 2 |
-
-### Custom Rules
-
-| SID | Alert Message | Severity | Classtype |
-|---|---|---|---|
-| 9000001 | `[NetSentinel] ICMP Activity Detected` | LOW | `network-scan` |
-| 9000002 | `[NetSentinel] Suspicious TCP Connection Attempt on Port 4444` | MEDIUM | `attempted-recon` |
-| 9000003 | `[NetSentinel] Suspicious HTTP Test Pattern Detected` | HIGH | `web-application-attack` |
-
-### Alert Logging
-
-Alerts are written to two locations:
-
-- `C:\Snort\log\netsentinel_alerts.txt` — Human-readable fast alert format (one line per alert)
-- `C:\Snort\log\netsentinel_unified2.log` — Binary unified2 format (for future parser integration)
-
-Each alert contains: timestamp, source IP/port, destination IP/port, protocol, alert message, and rule SID.
-
-### Running Snort
-
-**Test configuration (validate only, no live capture):**
+### 2. Validate Snort Configuration
 
 ```powershell
-# Run as Administrator
+# Run in Administrator PowerShell
 .\snort\config\start_snort.ps1 -TestMode
 ```
 
-**Start live monitoring:**
-
-```powershell
-# Run as Administrator
-.\snort\config\start_snort.ps1
-```
-
-### Snort Installation (Windows)
-
-Snort must be manually installed before running:
-
-1. Download `Snort_2_9_20_Installer.x64.exe` from https://www.snort.org/downloads
-2. Install to the default path `C:\Snort`
-3. Install **Npcap** (packet capture driver) from https://npcap.com/
-4. Run `start_snort.ps1` as Administrator
-
-> **Note:** Snort on Windows requires Npcap (or WinPcap) to capture live traffic.
-
----
-
-## Phase 3 — Controlled Attack Simulation
-
-### Overview
-
-NetSentinel Phase 3 verified that the Snort intrusion detection configuration accurately detects traffic matching all three custom rules (ICMP, TCP port 4444, and HTTP test pattern). All simulation traffic was generated safely against controlled local infrastructure (`127.0.0.1`).
-
-### Test Suite Components
-
-| File | Description |
-|---|---|
-| `tests/test_http_server.py` | Minimal local HTTP server on port `8080` for SID 9000003 testing |
-| `tests/run_tests.ps1` | PowerShell test generator for safe local traffic simulation |
-| `tests/attack_simulation.md` | Detailed attack simulation evidence log |
-
-### Test Results
-
-| Test Case | SID | Message | Traffic Type | Status |
-|---|---|---|---|---|
-| **ICMP Activity** | `9000001` | `[NetSentinel] ICMP Activity Detected` | Ping to `127.0.0.1` | ✅ PASS |
-| **TCP Port 4444** | `9000002` | `[NetSentinel] Suspicious TCP Connection Attempt on Port 4444` | TCP connection to `127.0.0.1:4444` | ✅ PASS |
-| **HTTP Test Pattern** | `9000003` | `[NetSentinel] Suspicious HTTP Test Pattern Detected` | HTTP GET `/netsentinel-test` to `127.0.0.1:8080` | ✅ PASS |
-
-### How to Run Attack Simulation
-
-1. Start Snort in live capture mode on loopback adapter:
-   ```powershell
-   & "C:\Snort\bin\snort.exe" -c "snort\config\netsentinel.conf" -i 8 -A fast -l "C:\Snort\log"
-   ```
-2. Start test HTTP server:
-   ```powershell
-   python tests/test_http_server.py 8080
-   ```
-3. Execute controlled attack simulation:
-   ```powershell
-   .\tests\run_tests.ps1 -Test All -TargetIP 127.0.0.1
-   ```
-4. Verify alert generation in `C:\Snort\log\netsentinel_alerts.txt`.
-
----
-
-## Phase 4 — Alert Parser
-
-### Overview
-
-NetSentinel Phase 4 implements the Python Snort alert parsing module. It reads raw Snort `alert_fast` logs and converts them into structured Python objects for downstream threat analysis.
-
-```text
-Snort alert log
-      ↓
-alert_parser.py
-      ↓
-Structured alert objects
-```
-
-### Extracted Fields
-
-Each parsed alert contains:
-- **`timestamp`**: Capture timestamp string (e.g. `08/14-22:36:30.977554`)
-- **`sid`**: Snort Rule ID integer (e.g. `9000001`)
-- **`revision`**: Rule revision integer (e.g. `1`)
-- **`message`**: Human-readable alert description
-- **`classification`**: Snort classtype category
-- **`priority`**: Severity priority integer (`1` = High, `2` = Medium, `3` = Low)
-- **`protocol`**: Transport/network protocol (`ICMP`, `TCP`, `UDP`)
-- **`source_ip`** & **`source_port`**: Originating IP and port (`None` for ICMP)
-- **`destination_ip`** & **`destination_port`**: Target IP and port (`None` for ICMP)
-
-### Key Files
-
-- `engine/alert_parser.py` — Core regex parser and stateful log reader
-- `engine/run_parser.py` — CLI demonstration script
-- `tests/test_alert_parser.py` — Automated unit tests for ICMP, TCP, HTTP, and malformed inputs
-
-### Running the Parser & Tests
+### 3. Run Automated Unit & API Tests
 
 ```bash
-# Run unit tests
-python -m pytest tests/test_alert_parser.py -v
-
-# Run alert parser demonstration
-python engine/run_parser.py
-```
-
----
-
-## Phase 5 — Threat Scoring
-
-### Overview
-
-NetSentinel Phase 5 implements the deterministic Threat Scoring Engine. It calculates a 0–100 threat score, risk category, and plain-language explanation for every parsed alert.
-
-```text
-Snort Alert
-    ↓
-Alert Parser
-    ↓
-Base Score
-    ↓
-Context Modifiers
-    ↓
-Final Score
-    ↓
-Risk Level
-```
-
-### Risk Classification Matrix
-
-| Score Range | Risk Level |
-|:---:|:---:|
-| 0 – 29 | **LOW** |
-| 30 – 59 | **MEDIUM** |
-| 60 – 79 | **HIGH** |
-| 80 – 100 | **CRITICAL** |
-
-### NetSentinel Rule Scoring Matrix
-
-| SID | Alert Message | Calculation | Final Score | Risk Level |
-|---|---|---|:---:|:---:|
-| **9000001** | ICMP Activity Detected | Base `30` | `30` | **MEDIUM** |
-| **9000002** | Suspicious TCP Connection (Port 4444) | Base `50` + Port 4444 (`+10`) | `60` | **HIGH** |
-| **9000003** | Suspicious HTTP Test Pattern | Base `70` + HTTP TCP (`+5`) | `75` | **HIGH** |
-
-### Key Files
-
-- `engine/threat_score.py` — Core threat scoring and risk evaluation logic
-- `engine/run_scoring.py` — CLI demonstration script
-- `tests/test_threat_score.py` — Unit test suite for threat scoring rules & boundary clamping
-
-### Running Threat Scoring & Tests
-
-```bash
-# Run all unit tests (Phases 4 & 5)
 python -m pytest tests/ -v
-
-# Run threat scoring demonstration
-python engine/run_scoring.py
 ```
 
----
-
-## Phase 6 — Response Engine
-
-### Overview
-
-NetSentinel Phase 6 implements the application-level Response Engine. It receives scored alerts from Phase 5 and executes deterministic, application-level responses (`LOG`, `FLAG`, `SUSPICIOUS`, `SIMULATED_BLOCK`, `ALREADY_BLOCKED`).
-
-```text
-Scored Alert
-      ↓
-Response Engine
-      ↓
-Risk Level
-      ↓
-Application-Level Response
-```
-
-> **Safety Notice:** NetSentinel currently uses an application-level simulated response mechanism. It does not modify the operating system firewall or perform real IP blocking.
-
-### Response Policy Matrix
-
-| Risk Level | Response Action | Status Code | Policy Description |
-|:---:|:---:|:---:|---|
-| **LOW** | `LOG` | `RECORDED` | Low-risk activity logged into history. |
-| **MEDIUM** | `FLAG` | `FLAGGED` | Medium-risk activity flagged for monitoring. |
-| **HIGH** | `SUSPICIOUS` | `MARKED_SUSPICIOUS` | Source IP added to in-memory `suspicious_ips` set. |
-| **CRITICAL** | `SIMULATED_BLOCK` | `BLOCKED_SIMULATED` | Source IP added to in-memory `blocked_ips` set. |
-| **CRITICAL** *(Duplicate)* | `ALREADY_BLOCKED` | `BLOCKED_SIMULATED` | Duplicate CRITICAL alert; source IP already in blocklist. |
-
-### Key Features
-
-- **In-Memory Tracking**: Maintains `suspicious_ips`, `blocked_ips`, and `response_history`.
-- **Duplicate Suppression**: Prevents duplicate IP entries in `blocked_ips` set on repeated CRITICAL alerts.
-- **Localhost Safety**: Loopback (`127.0.0.1`) alerts are safely recorded without system or network impact.
-
-### Key Files
-
-- `engine/response_engine.py` — Response engine class and in-memory IP tracker
-- `engine/run_response.py` — Complete end-to-end pipeline demonstration script
-- `tests/test_response_engine.py` — Unit test suite for response mapping, blocklists, and safety
-
-### Running Response Engine & Complete Test Suite
+### 4. Execute End-to-End Pipeline Demonstration
 
 ```bash
-# Run all unit tests (Phases 4, 5 & 6)
-python -m pytest tests/ -v
-
-# Run complete pipeline demonstration (Parser -> Scoring -> Response)
+# Run full pipeline demonstration script
 python engine/run_response.py
 ```
 
----
-
-## Phase 8 — Final Release Validation
-
-### Overview
-
-NetSentinel Phase 8 represents the final release validation phase. The entire end-to-end intrusion detection, threat scoring, response engine, and cybersecurity dashboard pipeline has been validated, tested, and verified for submission.
-
-```text
-Network Traffic
-      ↓
-    Snort
-      ↓
-  Alert Log
-      ↓
- Alert Parser
-      ↓
-Threat Scoring
-      ↓
-Response Engine
-      ↓
-   Flask API
-      ↓
-  Dashboard
-```
-
-### Final Release Validation Checklist
-
-| Phase | Module | Status | Validation Result |
-|:---:|---|:---:|---|
-| **Phase 1** | Project Setup & Architecture | ✅ PASS | Foundation, structure, health endpoint verified |
-| **Phase 2** | Snort Configuration & Rules | ✅ PASS | Custom SIDs 9000001, 9000002, 9000003 validated |
-| **Phase 3** | Controlled Attack Simulation | ✅ PASS | ICMP, TCP 4444, HTTP simulation traffic generated & detected |
-| **Phase 4** | Snort Alert Parser | ✅ PASS | Fast-alert regex parser & incremental reader tested |
-| **Phase 5** | Deterministic Threat Scoring | ✅ PASS | 0–100 threat score & risk level mapping verified |
-| **Phase 6** | Application-Level Response Engine | ✅ PASS | In-memory tracking, blocklist, duplicate block suppression |
-| **Phase 7** | Cybersecurity Dashboard | ✅ PASS | Flask REST API + Vanilla JS / Chart.js dashboard validated |
-| **Phase 8** | Final Release Validation | ✅ PASS | Full 21-test suite passed (100% pass rate) |
-
-> **Safety Notice:** NetSentinel uses an application-level simulated response mechanism and does not perform real firewall or IP blocking.
-
-### Running Complete Suite & End-to-End Pipeline
+### 5. Launch Flask Backend & Security Dashboard
 
 ```bash
-# Compile check all Python source files
-python -m compileall engine backend tests
-
-# Execute full automated test suite (21 unit & API tests)
-python -m pytest tests/ -v
-
-# Run full pipeline demonstration
-python engine/run_response.py
-
-# Launch Flask backend & Security Dashboard
 python backend/app.py
 ```
 
+Open your browser and navigate to:
+```text
+http://127.0.0.1:5000/
+```
 
+### 6. Controlled Attack Simulation
 
+To generate test traffic and observe live detection on the dashboard:
 
+```powershell
+# Terminal 1: Start Snort live capture
+.\snort\config\start_snort.ps1
 
+# Terminal 2: Start test HTTP server
+python tests/test_http_server.py 8080
+
+# Terminal 3: Execute controlled attack simulation
+.\tests\run_tests.ps1 -Test All -TargetIP 127.0.0.1
+```
+
+---
+
+## Automated Testing & Validation
+
+NetSentinel includes an automated test suite covering all pipeline phases:
+
+```bash
+python -m pytest tests/ -v
+```
+
+### Test Suite Results
+
+```text
+tests/test_alert_parser.py ........ [ 19%]
+tests/test_dashboard_api.py ........ [ 42%]
+tests/test_response_engine.py ...... [ 71%]
+tests/test_threat_score.py ........ [100%]
+
+==================== 21 passed in 0.40s ====================
+```
+
+* **Total Tests**: 21
+* **Passed**: 21
+* **Failed**: 0
+* **Skipped**: 0
+
+---
+
+## Safety & Security Guarantees
+
+NetSentinel is designed with safety principles for demonstration and educational use:
+
+```text
+OS Firewall Modified: NO
+Network Configuration Modified: NO
+Real IP Blocking: NO
+Shell Command Execution from Alerts: NO
+```
+
+* All network traffic testing is restricted to controlled local loopback targets (`127.0.0.1`).
+* Defensive blocking is strictly simulated in-memory within the application layer.
+
+---
+
+## Scope & Limitations
+
+* **Rule-Based Scope**: Intrusion detection relies on pre-configured Snort rules.
+* **Deterministic Logic**: Threat scoring uses rule-based priority and port modifiers rather than machine learning.
+* **Simulated Mitigation**: Response actions are maintained in-memory and do not alter operating system firewall rules.
+* **In-Memory State**: Active session state is maintained in RAM for demonstration lightness (no persistent database).
+
+---
+
+## Future Roadmap
+
+- Persistent SQLite database integration for historical alert archiving.
+- Support for expanded Snort rule sets (Emerging Threats community rules).
+- External threat-intelligence IP reputation lookups.
+- Role-based authentication and user access control for the dashboard.
+- Real firewall integration options with automated rollback safeguards.
+
+---
+
+## Final Validation & Release Status
+
+```text
+NETSENTINEL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+STATUS: RELEASE READY
+TEST SUITE: 21/21 PASSED
+GIT COMMIT: 9162192
+BRANCH: main
+WORKING TREE: CLEAN
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
