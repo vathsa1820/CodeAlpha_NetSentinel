@@ -8,6 +8,7 @@ and hosts static dashboard frontend assets.
 
 import os
 import sys
+import json
 from typing import Dict, List, Any
 from flask import Flask, jsonify, send_from_directory
 
@@ -25,6 +26,17 @@ DASHBOARD_DIR = os.path.join(PROJECT_ROOT, "dashboard")
 
 app = Flask(__name__, static_folder=DASHBOARD_DIR, static_url_path="")
 
+
+def get_mode() -> str:
+    """Determine runtime deployment mode: 'local' (Snort IDS) or 'demo' (Vercel demonstration)."""
+    mode = os.environ.get("NETSENTINEL_MODE", "").lower().strip()
+    if not mode:
+        if os.environ.get("VERCEL"):
+            return "demo"
+        return "local"
+    return mode
+
+
 # Stateful pipeline runner instance to prevent duplicate response processing on refresh
 class PipelineManager:
     def __init__(self):
@@ -33,12 +45,23 @@ class PipelineManager:
         self.scored_alerts: List[Dict[str, Any]] = []
 
     def refresh(self):
-        """Parse log file, score new alerts, and process new alerts through Response Engine."""
-        log_path = get_default_log_path()
-        if not os.path.exists(log_path):
-            return
+        """Parse log file or load demo alerts, score new alerts, and process new alerts through Response Engine."""
+        mode = get_mode()
+        parsed_alerts = []
 
-        parsed_alerts, _ = parse_log_file(log_path)
+        if mode == "demo":
+            demo_path = os.path.join(PROJECT_ROOT, "data", "demo_alerts.json")
+            if os.path.exists(demo_path):
+                try:
+                    with open(demo_path, "r", encoding="utf-8") as f:
+                        parsed_alerts = json.load(f)
+                except Exception as e:
+                    print(f"[NetSentinel Warning] Failed to load demo_alerts.json: {e}")
+        else:
+            log_path = get_default_log_path()
+            if os.path.exists(log_path):
+                parsed_alerts, _ = parse_log_file(log_path)
+
         for alert in parsed_alerts:
             sig = (
                 alert.get("timestamp"),
@@ -68,6 +91,7 @@ class PipelineManager:
         critical_count = sum(1 for a in alerts if a.get("risk_level") == "CRITICAL")
 
         return {
+            "mode": get_mode(),
             "total_alerts": len(alerts),
             "low": low_count,
             "medium": medium_count,
@@ -96,7 +120,7 @@ def index():
 @app.route("/health")
 def health():
     """Health check endpoint. Confirms the NetSentinel backend is running."""
-    return jsonify({"status": "ok", "service": "NetSentinel"})
+    return jsonify({"status": "ok", "service": "NetSentinel", "mode": get_mode()})
 
 
 @app.route("/api/alerts")

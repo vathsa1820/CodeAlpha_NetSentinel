@@ -162,6 +162,10 @@ The web dashboard is hosted by Flask and served from `dashboard/`:
 
 ```text
 NetSentinel/
+├── api/
+│   └── index.py                     # Vercel Python serverless function entrypoint
+├── data/
+│   └── demo_alerts.json             # Controlled demonstration alert dataset for Vercel mode
 ├── snort/
 │   ├── rules/
 │   │   └── netsentinel.rules        # Custom Snort detection rules
@@ -194,9 +198,54 @@ NetSentinel/
 │   ├── run_tests.ps1                # PowerShell controlled traffic generator
 │   └── attack_simulation.md         # Attack simulation evidence log
 │
+├── vercel.json                      # Vercel routing configuration
 ├── README.md                        # Project documentation
 └── requirements.txt                 # Dependencies (Flask, Pytest)
 ```
+
+---
+
+## Deployment
+
+NetSentinel supports two operational deployment modes:
+
+### 1. Local IDS Mode (Full Packet Capture)
+
+```text
+Windows 11
+  ↓
+Snort 2.9.20
+  ↓
+Python Alert Parser
+  ↓
+Threat Scoring Engine
+  ↓
+Response Engine
+  ↓
+Flask API
+  ↓
+Security Dashboard
+```
+
+In Local Mode (`NETSENTINEL_MODE=local`), Snort captures live network traffic on Windows, logs packet alerts to file, and the Python engine parses, scores, responds to, and displays live threats.
+
+### 2. Vercel Demo Mode (Serverless Demonstration)
+
+```text
+Vercel Cloud
+  ↓
+Flask Serverless Function (api/index.py)
+  ↓
+Validated Demonstration Alerts (data/demo_alerts.json)
+  ↓
+Threat Scoring Engine (engine/threat_score.py)
+  ↓
+Response Engine (engine/response_engine.py)
+  ↓
+Security Dashboard (dashboard/)
+```
+
+> **Deployment Notice:** Vercel hosts the NetSentinel dashboard and application/API demonstration layer. Snort packet capture and continuous network monitoring run in the controlled local Windows environment because the Vercel deployment environment does not provide raw network packet capture drivers (Npcap).
 
 ---
 

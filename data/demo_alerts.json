@@ -1,0 +1,54 @@
+[
+  {
+    "timestamp": "08/14-22:36:30.977554",
+    "sid": 9000001,
+    "revision": 1,
+    "message": "[NetSentinel] ICMP Activity Detected",
+    "classification": "Detection of a Network Scan",
+    "priority": 3,
+    "protocol": "ICMP",
+    "source_ip": "127.0.0.1",
+    "source_port": null,
+    "destination_ip": "127.0.0.1",
+    "destination_port": null
+  },
+  {
+    "timestamp": "08/14-22:36:31.990770",
+    "sid": 9000001,
+    "revision": 1,
+    "message": "[NetSentinel] ICMP Activity Detected",
+    "classification": "Detection of a Network Scan",
+    "priority": 3,
+    "protocol": "ICMP",
+    "source_ip": "127.0.0.1",
+    "source_port": null,
+    "destination_ip": "127.0.0.1",
+    "destination_port": null
+  },
+  {
+    "timestamp": "08/14-22:36:37.072228",
+    "sid": 9000002,
+    "revision": 1,
+    "message": "[NetSentinel] Suspicious TCP Connection Attempt on Port 4444",
+    "classification": "Attempted Information Leak",
+    "priority": 2,
+    "protocol": "TCP",
+    "source_ip": "127.0.0.1",
+    "source_port": 55319,
+    "destination_ip": "127.0.0.1",
+    "destination_port": 4444
+  },
+  {
+    "timestamp": "08/14-22:36:39.154624",
+    "sid": 9000003,
+    "revision": 1,
+    "message": "[NetSentinel] Suspicious HTTP Test Pattern Detected",
+    "classification": "Web Application Attack",
+    "priority": 1,
+    "protocol": "TCP",
+    "source_ip": "127.0.0.1",
+    "source_port": 55320,
+    "destination_ip": "127.0.0.1",
+    "destination_port": 8080
+  }
+]

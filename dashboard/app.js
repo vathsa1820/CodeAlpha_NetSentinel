@@ -102,9 +102,17 @@ async function fetchDashboardData() {
     const alerts = await alertsRes.json();
     const responses = await responsesRes.json();
 
-    // Mark status active
-    statusElem.className = 'status-badge status-active';
-    statusElem.innerHTML = '<span class="status-dot">●</span> SYSTEM ACTIVE';
+    // Mark status badge
+    const subTitleElem = document.querySelector('.header-subtitle');
+    if (stats.mode === 'demo') {
+      statusElem.className = 'status-badge status-demo';
+      statusElem.innerHTML = '<span class="status-dot">●</span> DEMO MODE';
+      if (subTitleElem) subTitleElem.textContent = 'Controlled Demonstration Data';
+    } else {
+      statusElem.className = 'status-badge status-active';
+      statusElem.innerHTML = '<span class="status-dot">●</span> SYSTEM ACTIVE';
+      if (subTitleElem) subTitleElem.textContent = 'Network Intrusion Detection & Response System';
+    }
 
     // Update DOM sections
     updateMetrics(stats);
