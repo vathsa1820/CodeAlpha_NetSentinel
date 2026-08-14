@@ -52,7 +52,7 @@ Security Dashboard
 | 3     | Attack Simulation  | ✅ Complete  |
 | 4     | Alert Parser       | ✅ Complete  |
 | 5     | Threat Scoring     | ✅ Complete  |
-| 6     | Response Engine    | ⬜ Pending   |
+| 6     | Response Engine    | ✅ Complete  |
 | 7     | Dashboard          | ⬜ Pending   |
 | 8     | Final Validation   | ⬜ Pending   |
 
@@ -304,7 +304,58 @@ python -m pytest tests/ -v
 python engine/run_scoring.py
 ```
 
-*Note: Automated response actions and firewall mitigations will be implemented in Phase 6.*
+---
+
+## Phase 6 — Response Engine
+
+### Overview
+
+NetSentinel Phase 6 implements the application-level Response Engine. It receives scored alerts from Phase 5 and executes deterministic, application-level responses (`LOG`, `FLAG`, `SUSPICIOUS`, `SIMULATED_BLOCK`, `ALREADY_BLOCKED`).
+
+```text
+Scored Alert
+      ↓
+Response Engine
+      ↓
+Risk Level
+      ↓
+Application-Level Response
+```
+
+> **Safety Notice:** NetSentinel currently uses an application-level simulated response mechanism. It does not modify the operating system firewall or perform real IP blocking.
+
+### Response Policy Matrix
+
+| Risk Level | Response Action | Status Code | Policy Description |
+|:---:|:---:|:---:|---|
+| **LOW** | `LOG` | `RECORDED` | Low-risk activity logged into history. |
+| **MEDIUM** | `FLAG` | `FLAGGED` | Medium-risk activity flagged for monitoring. |
+| **HIGH** | `SUSPICIOUS` | `MARKED_SUSPICIOUS` | Source IP added to in-memory `suspicious_ips` set. |
+| **CRITICAL** | `SIMULATED_BLOCK` | `BLOCKED_SIMULATED` | Source IP added to in-memory `blocked_ips` set. |
+| **CRITICAL** *(Duplicate)* | `ALREADY_BLOCKED` | `BLOCKED_SIMULATED` | Duplicate CRITICAL alert; source IP already in blocklist. |
+
+### Key Features
+
+- **In-Memory Tracking**: Maintains `suspicious_ips`, `blocked_ips`, and `response_history`.
+- **Duplicate Suppression**: Prevents duplicate IP entries in `blocked_ips` set on repeated CRITICAL alerts.
+- **Localhost Safety**: Loopback (`127.0.0.1`) alerts are safely recorded without system or network impact.
+
+### Key Files
+
+- `engine/response_engine.py` — Response engine class and in-memory IP tracker
+- `engine/run_response.py` — Complete end-to-end pipeline demonstration script
+- `tests/test_response_engine.py` — Unit test suite for response mapping, blocklists, and safety
+
+### Running Response Engine & Complete Test Suite
+
+```bash
+# Run all unit tests (Phases 4, 5 & 6)
+python -m pytest tests/ -v
+
+# Run complete pipeline demonstration (Parser -> Scoring -> Response)
+python engine/run_response.py
+```
+
 
 
 
