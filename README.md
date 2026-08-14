@@ -50,7 +50,7 @@ Security Dashboard
 | 1     | Project Setup      | ✅ Complete  |
 | 2     | Snort Configuration| ✅ Complete  |
 | 3     | Attack Simulation  | ✅ Complete  |
-| 4     | Alert Parser       | ⬜ Pending   |
+| 4     | Alert Parser       | ✅ Complete  |
 | 5     | Threat Scoring     | ⬜ Pending   |
 | 6     | Response Engine    | ⬜ Pending   |
 | 7     | Dashboard          | ⬜ Pending   |
@@ -203,4 +203,52 @@ NetSentinel Phase 3 verified that the Snort intrusion detection configuration ac
    .\tests\run_tests.ps1 -Test All -TargetIP 127.0.0.1
    ```
 4. Verify alert generation in `C:\Snort\log\netsentinel_alerts.txt`.
+
+---
+
+## Phase 4 — Alert Parser
+
+### Overview
+
+NetSentinel Phase 4 implements the Python Snort alert parsing module. It reads raw Snort `alert_fast` logs and converts them into structured Python objects for downstream threat analysis.
+
+```text
+Snort alert log
+      ↓
+alert_parser.py
+      ↓
+Structured alert objects
+```
+
+### Extracted Fields
+
+Each parsed alert contains:
+- **`timestamp`**: Capture timestamp string (e.g. `08/14-22:36:30.977554`)
+- **`sid`**: Snort Rule ID integer (e.g. `9000001`)
+- **`revision`**: Rule revision integer (e.g. `1`)
+- **`message`**: Human-readable alert description
+- **`classification`**: Snort classtype category
+- **`priority`**: Severity priority integer (`1` = High, `2` = Medium, `3` = Low)
+- **`protocol`**: Transport/network protocol (`ICMP`, `TCP`, `UDP`)
+- **`source_ip`** & **`source_port`**: Originating IP and port (`None` for ICMP)
+- **`destination_ip`** & **`destination_port`**: Target IP and port (`None` for ICMP)
+
+### Key Files
+
+- `engine/alert_parser.py` — Core regex parser and stateful log reader
+- `engine/run_parser.py` — CLI demonstration script
+- `tests/test_alert_parser.py` — Automated unit tests for ICMP, TCP, HTTP, and malformed inputs
+
+### Running the Parser & Tests
+
+```bash
+# Run unit tests
+python -m pytest tests/test_alert_parser.py -v
+
+# Run alert parser demonstration
+python engine/run_parser.py
+```
+
+*Note: Threat scoring, response handling, and database persistence will be implemented in subsequent phases.*
+
 
