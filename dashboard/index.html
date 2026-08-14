@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NetSentinel — Security Dashboard</title>
+
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Dashboard Styles -->
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- Top Header Navigation -->
+  <header class="app-header">
+    <div class="header-branding">
+      <div class="shield-icon">🛡️</div>
+      <div>
+        <h1 class="header-title">NetSentinel</h1>
+        <p class="header-subtitle">Network Intrusion Detection & Response System</p>
+      </div>
+    </div>
+    <div class="header-status">
+      <span id="status-indicator" class="status-badge status-active">
+        <span class="status-dot">●</span> SYSTEM ACTIVE
+      </span>
+      <span class="auto-refresh-tag">Auto-refresh: 5s</span>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="dashboard-container">
+
+    <!-- Metrics Cards Row -->
+    <section class="metrics-grid">
+      <div class="card metric-card">
+        <div class="metric-label">TOTAL ALERTS</div>
+        <div class="metric-value" id="val-total-alerts">0</div>
+        <div class="metric-footer">Logged & Parsed</div>
+      </div>
+
+      <div class="card metric-card metric-medium">
+        <div class="metric-label">MEDIUM RISK</div>
+        <div class="metric-value" id="val-medium-risk">0</div>
+        <div class="metric-footer">Priority 3 / Medium Threat</div>
+      </div>
+
+      <div class="card metric-card metric-high">
+        <div class="metric-label">HIGH RISK</div>
+        <div class="metric-value" id="val-high-risk">0</div>
+        <div class="metric-footer">Priority 1 & 2 / High Threat</div>
+      </div>
+
+      <div class="card metric-card metric-critical">
+        <div class="metric-label">CRITICAL / BLOCKS</div>
+        <div class="metric-value" id="val-critical-blocks">0</div>
+        <div class="metric-footer">Simulated Blocklist</div>
+      </div>
+    </section>
+
+    <!-- Charts Grid Row -->
+    <section class="charts-grid">
+      <div class="card chart-card">
+        <div class="card-header">
+          <h2 class="card-title">Threat Distribution</h2>
+          <span class="card-badge">Risk Breakdown</span>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="threatDistributionChart"></canvas>
+        </div>
+      </div>
+
+      <div class="card chart-card">
+        <div class="card-header">
+          <h2 class="card-title">Attack Activity by SID</h2>
+          <span class="card-badge">Rule Hits</span>
+        </div>
+        <div class="chart-wrapper">
+          <canvas id="attackActivityChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Recent Alerts Table -->
+    <section class="card table-card">
+      <div class="card-header">
+        <h2 class="card-title">Recent Security Alerts</h2>
+        <span class="card-badge">Live Snort Log Stream</span>
+      </div>
+      <div class="table-responsive">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>SID</th>
+              <th>Attack Description</th>
+              <th>Protocol</th>
+              <th>Source</th>
+              <th>Destination</th>
+              <th>Score</th>
+              <th>Risk Level</th>
+            </tr>
+          </thead>
+          <tbody id="alerts-table-body">
+            <tr>
+              <td colspan="8" class="text-muted text-center">Loading security alerts...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Bottom Row: Suspicious IPs & Response Activity -->
+    <section class="bottom-grid">
+      <!-- Suspicious IPs & Blocklist Card -->
+      <div class="card list-card">
+        <div class="card-header">
+          <h2 class="card-title">Tracked Sources</h2>
+          <span class="card-badge">Application State</span>
+        </div>
+        <div class="ip-group">
+          <h3>Suspicious IPs</h3>
+          <div id="suspicious-ip-list" class="ip-tags">
+            <span class="tag tag-empty">No suspicious IPs detected</span>
+          </div>
+        </div>
+        <div class="ip-group">
+          <h3>Simulated Blocklist</h3>
+          <div id="blocked-ip-list" class="ip-tags">
+            <span class="tag tag-empty">No simulated blocks</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Response Engine History Card -->
+      <div class="card table-card">
+        <div class="card-header">
+          <h2 class="card-title">Response Engine Activity</h2>
+          <span class="card-badge">Application-Level Simulation</span>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Source IP</th>
+                <th>SID</th>
+                <th>Risk</th>
+                <th>Action</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="responses-table-body">
+              <tr>
+                <td colspan="6" class="text-muted text-center">Loading response history...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Dashboard Script -->
+  <script src="app.js"></script>
+</body>
+</html>
