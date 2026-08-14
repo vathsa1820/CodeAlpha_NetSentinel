@@ -51,7 +51,7 @@ Security Dashboard
 | 2     | Snort Configuration| ✅ Complete  |
 | 3     | Attack Simulation  | ✅ Complete  |
 | 4     | Alert Parser       | ✅ Complete  |
-| 5     | Threat Scoring     | ⬜ Pending   |
+| 5     | Threat Scoring     | ✅ Complete  |
 | 6     | Response Engine    | ⬜ Pending   |
 | 7     | Dashboard          | ⬜ Pending   |
 | 8     | Final Validation   | ⬜ Pending   |
@@ -249,6 +249,62 @@ python -m pytest tests/test_alert_parser.py -v
 python engine/run_parser.py
 ```
 
-*Note: Threat scoring, response handling, and database persistence will be implemented in subsequent phases.*
+---
+
+## Phase 5 — Threat Scoring
+
+### Overview
+
+NetSentinel Phase 5 implements the deterministic Threat Scoring Engine. It calculates a 0–100 threat score, risk category, and plain-language explanation for every parsed alert.
+
+```text
+Snort Alert
+    ↓
+Alert Parser
+    ↓
+Base Score
+    ↓
+Context Modifiers
+    ↓
+Final Score
+    ↓
+Risk Level
+```
+
+### Risk Classification Matrix
+
+| Score Range | Risk Level |
+|:---:|:---:|
+| 0 – 29 | **LOW** |
+| 30 – 59 | **MEDIUM** |
+| 60 – 79 | **HIGH** |
+| 80 – 100 | **CRITICAL** |
+
+### NetSentinel Rule Scoring Matrix
+
+| SID | Alert Message | Calculation | Final Score | Risk Level |
+|---|---|---|:---:|:---:|
+| **9000001** | ICMP Activity Detected | Base `30` | `30` | **MEDIUM** |
+| **9000002** | Suspicious TCP Connection (Port 4444) | Base `50` + Port 4444 (`+10`) | `60` | **HIGH** |
+| **9000003** | Suspicious HTTP Test Pattern | Base `70` + HTTP TCP (`+5`) | `75` | **HIGH** |
+
+### Key Files
+
+- `engine/threat_score.py` — Core threat scoring and risk evaluation logic
+- `engine/run_scoring.py` — CLI demonstration script
+- `tests/test_threat_score.py` — Unit test suite for threat scoring rules & boundary clamping
+
+### Running Threat Scoring & Tests
+
+```bash
+# Run all unit tests (Phases 4 & 5)
+python -m pytest tests/ -v
+
+# Run threat scoring demonstration
+python engine/run_scoring.py
+```
+
+*Note: Automated response actions and firewall mitigations will be implemented in Phase 6.*
+
 
 
