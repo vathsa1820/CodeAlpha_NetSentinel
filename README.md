@@ -49,7 +49,7 @@ Security Dashboard
 |-------|--------------------|-------------|
 | 1     | Project Setup      | ✅ Complete  |
 | 2     | Snort Configuration| ✅ Complete  |
-| 3     | Attack Simulation  | ⬜ Pending   |
+| 3     | Attack Simulation  | ✅ Complete  |
 | 4     | Alert Parser       | ⬜ Pending   |
 | 5     | Threat Scoring     | ⬜ Pending   |
 | 6     | Response Engine    | ⬜ Pending   |
@@ -164,11 +164,43 @@ Snort must be manually installed before running:
 
 > **Note:** Snort on Windows requires Npcap (or WinPcap) to capture live traffic.
 
-Expected response:
+---
 
-```json
-{
-  "status": "ok",
-  "service": "NetSentinel"
-}
-```
+## Phase 3 — Controlled Attack Simulation
+
+### Overview
+
+NetSentinel Phase 3 verified that the Snort intrusion detection configuration accurately detects traffic matching all three custom rules (ICMP, TCP port 4444, and HTTP test pattern). All simulation traffic was generated safely against controlled local infrastructure (`127.0.0.1`).
+
+### Test Suite Components
+
+| File | Description |
+|---|---|
+| `tests/test_http_server.py` | Minimal local HTTP server on port `8080` for SID 9000003 testing |
+| `tests/run_tests.ps1` | PowerShell test generator for safe local traffic simulation |
+| `tests/attack_simulation.md` | Detailed attack simulation evidence log |
+
+### Test Results
+
+| Test Case | SID | Message | Traffic Type | Status |
+|---|---|---|---|---|
+| **ICMP Activity** | `9000001` | `[NetSentinel] ICMP Activity Detected` | Ping to `127.0.0.1` | ✅ PASS |
+| **TCP Port 4444** | `9000002` | `[NetSentinel] Suspicious TCP Connection Attempt on Port 4444` | TCP connection to `127.0.0.1:4444` | ✅ PASS |
+| **HTTP Test Pattern** | `9000003` | `[NetSentinel] Suspicious HTTP Test Pattern Detected` | HTTP GET `/netsentinel-test` to `127.0.0.1:8080` | ✅ PASS |
+
+### How to Run Attack Simulation
+
+1. Start Snort in live capture mode on loopback adapter:
+   ```powershell
+   & "C:\Snort\bin\snort.exe" -c "snort\config\netsentinel.conf" -i 8 -A fast -l "C:\Snort\log"
+   ```
+2. Start test HTTP server:
+   ```powershell
+   python tests/test_http_server.py 8080
+   ```
+3. Execute controlled attack simulation:
+   ```powershell
+   .\tests\run_tests.ps1 -Test All -TargetIP 127.0.0.1
+   ```
+4. Verify alert generation in `C:\Snort\log\netsentinel_alerts.txt`.
+

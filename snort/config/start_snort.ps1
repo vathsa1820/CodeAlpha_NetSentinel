@@ -34,16 +34,19 @@ if (-not (Test-Path $SNORT_EXE)) {
     exit 1
 }
 
-# Get Windows interface index for Snort (-i flag)
-$adapter = Get-NetAdapter -Name $Interface -ErrorAction SilentlyContinue
-if (-not $adapter) {
-    Write-Error "Network interface '$Interface' not found or not up."
-    Write-Host "Available interfaces:"
-    Get-NetAdapter | Where-Object { $_.Status -eq "Up" } | Format-Table Name, InterfaceDescription
-    exit 1
+# Get Snort device index for the specified interface (-i flag)
+$snortW = & $SNORT_EXE -W 2>&1
+$ifIndex = $null
+foreach ($line in $snortW) {
+    if ($line -match "^\s*(\d+)\s+.*($Interface|192\.168|MediaTek)") {
+        $ifIndex = [int]$matches[1]
+        break
+    }
 }
-$ifIndex = $adapter.InterfaceIndex
-Write-Host "[NetSentinel] Using interface: $Interface (index $ifIndex)"
+if (-not $ifIndex) {
+    $ifIndex = 1
+}
+Write-Host "[NetSentinel] Using Snort device interface index: $ifIndex"
 
 if ($TestMode) {
     # -T = test/validate configuration, then exit

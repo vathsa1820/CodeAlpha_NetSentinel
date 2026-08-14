@@ -22,4 +22,4 @@ alert tcp any any -> $HOME_NET 4444 (msg:"[NetSentinel] Suspicious TCP Connectio
 # Rule 3 — Suspicious HTTP Request (HIGH severity)
 # Detects an HTTP GET request containing the harmless test string "netsentinel-test" in the URI.
 # -----------------------------------------------------------------------------
-alert tcp any any -> $HOME_NET 80 (msg:"[NetSentinel] Suspicious HTTP Test Pattern Detected"; flow:to_server,established; content:"netsentinel-test"; http_uri; classtype:web-application-attack; sid:9000003; rev:1;)
+alert tcp any any -> $HOME_NET $HTTP_PORTS (msg:"[NetSentinel] Suspicious HTTP Test Pattern Detected"; flow:to_server,established; content:"netsentinel-test"; http_uri; classtype:web-application-attack; sid:9000003; rev:1;)
