@@ -53,8 +53,8 @@ Security Dashboard
 | 4     | Alert Parser       | ✅ Complete  |
 | 5     | Threat Scoring     | ✅ Complete  |
 | 6     | Response Engine    | ✅ Complete  |
-| 7     | Dashboard          | ⬜ Pending   |
-| 8     | Final Validation   | ⬜ Pending   |
+| 7     | Dashboard          | ✅ Complete  |
+| 8     | Final Validation   | ✅ Complete  |
 
 ---
 
@@ -355,6 +355,64 @@ python -m pytest tests/ -v
 # Run complete pipeline demonstration (Parser -> Scoring -> Response)
 python engine/run_response.py
 ```
+
+---
+
+## Phase 8 — Final Release Validation
+
+### Overview
+
+NetSentinel Phase 8 represents the final release validation phase. The entire end-to-end intrusion detection, threat scoring, response engine, and cybersecurity dashboard pipeline has been validated, tested, and verified for submission.
+
+```text
+Network Traffic
+      ↓
+    Snort
+      ↓
+  Alert Log
+      ↓
+ Alert Parser
+      ↓
+Threat Scoring
+      ↓
+Response Engine
+      ↓
+   Flask API
+      ↓
+  Dashboard
+```
+
+### Final Release Validation Checklist
+
+| Phase | Module | Status | Validation Result |
+|:---:|---|:---:|---|
+| **Phase 1** | Project Setup & Architecture | ✅ PASS | Foundation, structure, health endpoint verified |
+| **Phase 2** | Snort Configuration & Rules | ✅ PASS | Custom SIDs 9000001, 9000002, 9000003 validated |
+| **Phase 3** | Controlled Attack Simulation | ✅ PASS | ICMP, TCP 4444, HTTP simulation traffic generated & detected |
+| **Phase 4** | Snort Alert Parser | ✅ PASS | Fast-alert regex parser & incremental reader tested |
+| **Phase 5** | Deterministic Threat Scoring | ✅ PASS | 0–100 threat score & risk level mapping verified |
+| **Phase 6** | Application-Level Response Engine | ✅ PASS | In-memory tracking, blocklist, duplicate block suppression |
+| **Phase 7** | Cybersecurity Dashboard | ✅ PASS | Flask REST API + Vanilla JS / Chart.js dashboard validated |
+| **Phase 8** | Final Release Validation | ✅ PASS | Full 21-test suite passed (100% pass rate) |
+
+> **Safety Notice:** NetSentinel uses an application-level simulated response mechanism and does not perform real firewall or IP blocking.
+
+### Running Complete Suite & End-to-End Pipeline
+
+```bash
+# Compile check all Python source files
+python -m compileall engine backend tests
+
+# Execute full automated test suite (21 unit & API tests)
+python -m pytest tests/ -v
+
+# Run full pipeline demonstration
+python engine/run_response.py
+
+# Launch Flask backend & Security Dashboard
+python backend/app.py
+```
+
 
 
 

@@ -31,6 +31,10 @@ def get_default_log_path() -> str:
         return env_path
     primary = r"C:\Snort\log\netsentinel_alerts.txt"
     secondary = r"C:\Snort\log\alert.ids"
+    if os.path.exists(primary) and os.path.getsize(primary) > 0:
+        return primary
+    if os.path.exists(secondary) and os.path.getsize(secondary) > 0:
+        return secondary
     if os.path.exists(primary):
         return primary
     if os.path.exists(secondary):
